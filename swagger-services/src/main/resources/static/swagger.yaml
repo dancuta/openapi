@@ -1,0 +1,471 @@
+openapi: 3.0.2
+info:
+  version: '1'
+  title: My First API
+  description: 'My first API example using springfox-boot-starter 3.0.0'
+  contact:
+    name: contact-name
+    email: send-mail-to@yahoo.com
+  license:
+    name: Apache 2.0
+    url: https://development.google.com.com
+
+servers:
+  - url: http://localhost:8080/api
+    description: My first API
+
+security:
+  - BasicAuth: []  # <-- use the same name here
+  - JwtAuthToken: []
+
+paths:
+
+  /ping:
+    get:
+      operationId: ping
+      description: Verify API status
+      summary: API status
+      tags:
+        - Status
+      responses:
+        '202':
+          description: Status ok
+
+  /books/all:
+    get:
+      operationId: getAllBooks
+      tags:
+        - Books
+      description: Get a list of all **books**
+      summary: 'Get a list of books - no auth required'
+      responses:
+        '200':
+          description: List of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+        '404':
+          description: Books not found
+        '400':
+          description: Bad request
+      security: [] # no security is required
+
+  /beers:
+
+    get:
+      operationId: getAllBeers
+      summary: Get beers
+      description: Get a list of beers
+      tags:
+        - Beers
+      parameters:
+        - in: query
+          name: page-number
+          schema:
+            $ref: "#/components/schemas/PageNumber"
+        - $ref: "#/components/schemas/PageSize"
+      responses:
+        '200':
+          description: List of beers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Beer'
+        '400':
+          description: Bad request
+        '404':
+          description: Not found
+
+    post: # creates a resource
+      operationId: createBeer
+      summary: Create a beer
+      description: Create a bear
+      tags:
+        - Beers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Beer'
+      responses:
+        '201':
+          description: Beer created
+          headers:
+            Location:
+              description: Location of created beer
+              schema:
+                type: string
+                format: uri
+                example: htt://localhost:8080/beer/{assignedValue}
+        '400':
+          description: Bad request
+        '409':
+          description: Conflict
+
+  /beers/{beerId}:
+    get:
+      operationId: getBeerById
+      summary: Get a beer
+      description: Get a beer by ID
+      tags:
+        - Beers
+      parameters:
+        - $ref: '#/components/parameters/BeerIdParam'
+      responses:
+        '200':
+          description: 'Get the description of beer'
+          content:
+            aplication/json:
+              schema:
+                $ref: '#/components/schemas/Beer'
+        '400':
+          description: Bad request
+        '404':
+          description: Beer not found
+        '409':
+          description: Conflict
+
+    put: # updates a resource
+      operationId: modifyBeer
+      summary: Modify a beer
+      description: Modify a bear
+      tags:
+        - Beers
+      parameters:
+        - $ref: '#/components/parameters/BeerIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Beer'
+      responses:
+        '204':
+          description: Beer updated
+          headers:
+            Location:
+              description: Location of created beer
+              schema:
+                type: string
+                format: uri
+                example: htt://localhost:8080/beer/{assignedValue}
+        '400':
+          description: Bad request
+        '404':
+          description: Beer not found
+        '409':
+          description: Conflict
+
+    delete:
+      operationId: deleteBeerById
+      summary: Delete a beer
+      description: Delete a beer by ID
+      tags:
+        - Beers
+      parameters:
+        - $ref: '#/components/parameters/BeerIdParam'
+      responses:
+        '200':
+          description: Beer deleted
+
+  /customers:
+    get:
+      operationId: getAllCustomers
+      tags:
+        - Customers
+      parameters:
+        - in: query
+          name: pageNumber
+          description: 'Page number'
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - in: query
+          name: pageSize
+          description: 'Page size'
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: 'List of customers'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Beer'
+        '400':
+          description: Bad request
+        '404':
+          description: Not found
+
+  /{customerId}/orders:
+    get:
+      operationId: getOrdersForCustomer
+      summary: List customers' orders
+      description: Get a list of orders for a customer ID
+      tags:
+        - Orders
+      parameters:
+        - $ref: '#/components/parameters/CustomerIdParam'
+      responses:
+        '200':
+          description: Orders retrieved for customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeerOrder'
+        '409':
+          description: Bad request
+        '401':
+          description: Not found
+
+    post:
+      operationId: postOrderForCustomer
+      summary: Place an order
+      description: Place an order for a customer ID
+      tags:
+        - Orders
+      parameters:
+        - $ref: '#/components/parameters/CustomerIdParam'
+      requestBody:
+        description: Content of the order
+        content:
+          application:json:
+            schema:
+              $ref: '#/components/schemas/BeerOrder'
+
+      responses:
+        '200':
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeerOrder'
+        '409':
+          description: Bad request
+      callbacks:
+        orderStatusChange:
+          '${request.body#/orderStatusCallbackUrl}': # orderStatusCallbackUrl = name of the property from request body
+            description: 'Webhook for order status'
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        orderid:
+                          type: string
+                          format: uuid
+                        orderStatus:
+                          type: string
+              responses:
+                '200':
+                  description: OK
+
+components:
+
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+
+    JwtAuthToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+      #ApiKeyAuth:
+      # type: apiKey
+      #in: header
+      #ame: X-API-KEY
+      #description: Authenticate request using X-API-KEY set in header
+
+
+  parameters:
+    BeerIdParam:
+      name: beerId
+      in: path
+      required: true
+      description: 'Beer unique ID'
+      schema:
+        type: string
+        format: uuid
+
+    CustomerIdParam:
+      name: customerId
+      in: path
+      required: true
+      description: 'Customer unique ID'
+      schema:
+        type: string
+        format: uuid
+
+    OrderIdParam:
+      name: orderId
+      in: path
+      required: true
+      description: 'Order unique ID'
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+
+    BeerId:
+      description: 'Beer unique ID'
+      type: string
+      format: uuid
+      readOnly: true  #won't be present in POST request body
+
+    CustomerId:
+      description: 'Customer unique ID'
+      type: string
+      format: uuid
+      readOnly: true  #won't be present in POST request body
+
+    OrderId:
+      description: 'Order unique ID'
+      type: string
+      format: uuid
+      readOnly: true  #won't be present in POST request body
+
+    Beer:
+      type: object
+      description: Beer object
+      properties:
+        id:
+          $ref:  '#/components/schemas/BeerId'
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Beer name
+        style:
+          type: string
+          description: 'Beer Style'
+          enum:
+            - ALE
+            - PALE_ALE
+            - IPA
+            - WHEAT
+            - LAGER
+        upc:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: 'Beer name'
+        price:
+          type: integer
+        quantity:
+          type: integer
+        brewery:
+          $ref: "#/components/schemas/Brewery"
+
+    BeerOrder:
+      type: object
+      description: Beer Order object
+      properties:
+        orderId:
+          $ref: '#/components/schemas/OrderId'
+        customerId:
+          $ref: '#/components/schemas/CustomerId'
+        beers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Beer'
+        orderStatusCallbackUrl:   # Callback URL
+          type: string
+          format: uri
+          example: https://myserver.com/send/callback/here
+      required:
+        - callbackUrl
+
+
+    Brewery:
+      type: object
+      properties:
+        name:
+          type: string
+          description: brewery name
+        location:
+          type: string
+          description: brewery location
+
+    Address:
+      type: object
+      description: Address
+      properties:
+        line1:
+          type: string
+        line2:
+          type: string
+        stateCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+          #enum: [AL, AK, AZ, AR, CA]
+          description: 2-Letter State Code
+          enum:
+            - AL
+            - AK
+            - AZ
+            - AR
+            - CA
+        email:
+          type: string
+          format: email
+
+    Book:
+      type: object
+      description: Book object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Book name
+          minLength: 2
+          maxLength: 100
+          example: Cartea cea mai frumoasa
+        author:
+          $ref: "#/components/schemas/Author"
+        description:
+          type: string
+          description: Book description
+
+    Author:
+      type: object
+      properties:
+        name:
+          description: Author name
+          minLength: 2
+          maxLength: 100
+          example: Mihai Eminescu
+        address:
+          $ref: "#/components/schemas/Address"
+
+    PageSize:
+      description: 'Page size'
+      type: integer
+      format: int32
+      example: 10
+      default: 10
+
+    PageNumber:
+      description: 'Page number'
+      type: integer
+      format: int32
+      example: 1
+      default: 1
